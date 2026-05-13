@@ -1,100 +1,84 @@
-document.addEventListener('DOMContentLoaded', () => {
-    /* ==========================================================================
-       Dark Mode / Light Mode Toggle
-       ========================================================================== */
-    const themeToggleBtn = document.getElementById('themeToggle');
-    const htmlElement = document.documentElement;
+// Tema Yönetimi
+const themeToggleBtn = document.getElementById('themeToggle');
+const htmlElement = document.documentElement;
 
-    // Check for saved user preference in localStorage
-    const savedTheme = localStorage.getItem('portfolio-theme');
-    if (savedTheme) {
-        htmlElement.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
-    } else {
-        // If no preference, check system preference
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            htmlElement.setAttribute('data-theme', 'dark');
-            updateThemeIcon('dark');
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+    htmlElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+themeToggleBtn.addEventListener('click', () => {
+    const currentTheme = htmlElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+    htmlElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+});
+
+function updateThemeIcon(theme) {
+    themeToggleBtn.textContent = theme === 'light' ? '🌙' : '☀️';
+}
+
+// İletişim Formu Doğrulama ve AJAX Gönderimi
+const contactForm = document.getElementById('contactForm');
+if (contactForm) {
+    contactForm.addEventListener('submit', function (e) {
+        e.preventDefault(); // Sayfa yenilenmesini engelle
+
+        let isValid = true;
+
+        // Form Alanları
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const messageInput = document.getElementById('message');
+
+        // İsim Doğrulama
+        if (nameInput.value.trim() === '') {
+            showError('nameGroup');
+            isValid = false;
+        } else {
+            hideError('nameGroup');
         }
-    }
 
-    // Toggle theme on button click
-    themeToggleBtn.addEventListener('click', () => {
-        const currentTheme = htmlElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        
-        htmlElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('portfolio-theme', newTheme); // Save preference
-        updateThemeIcon(newTheme);
-    });
+        // E-posta Doğrulama
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailInput.value.trim())) {
+            showError('emailGroup');
+            isValid = false;
+        } else {
+            hideError('emailGroup');
+        }
 
-    function updateThemeIcon(theme) {
-        themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
-    }
+        // Mesaj Doğrulama (Min 10 karakter)
+        if (messageInput.value.trim().length < 10) {
+            showError('messageGroup');
+            isValid = false;
+        } else {
+            hideError('messageGroup');
+        }
 
-    /* ==========================================================================
-       Client-Side Form Validation (Contact Form)
-       ========================================================================== */
-    const contactForm = document.getElementById('contactForm');
+        // AJAX Gönderimi
+        if (isValid) {
+            const formData = new FormData(contactForm);
+            const submitBtn = contactForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
 
-    if (contactForm) {
-        contactForm.addEventListener('submit', function(e) {
-            // Prevent default submission to validate first
-            e.preventDefault();
-            
-            let isValid = true;
-            
-            // Get form fields
-            const nameInput = document.getElementById('name');
-            const emailInput = document.getElementById('email');
-            const messageInput = document.getElementById('message');
-            
-            // Validate Name
-            if (nameInput.value.trim() === '') {
-                showError('nameGroup');
-                isValid = false;
-            } else {
-                removeError('nameGroup');
-            }
+            submitBtn.textContent = 'Gönderiliyor...';
+            submitBtn.disabled = true;
 
-            // Validate Email with simple Regex
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(emailInput.value.trim())) {
-                showError('emailGroup');
-                isValid = false;
-            } else {
-                removeError('emailGroup');
-            }
-
-            // Validate Message (min 10 characters)
-            if (messageInput.value.trim().length < 10) {
-                showError('messageGroup');
-                isValid = false;
-            } else {
-                removeError('messageGroup');
-            }
-
-            // If everything is valid, submit via AJAX
-            if (isValid) {
-                const formData = new FormData(contactForm);
-                const submitBtn = contactForm.querySelector('button[type="submit"]');
-                const originalText = submitBtn.textContent;
-                
-                submitBtn.textContent = 'Gönderiliyor...';
-                submitBtn.disabled = true;
-
-                fetch('process_contact.php', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
+            fetch('process_contact.php', {
+                method: 'POST',
+                body: formData
+            })
                 .then(response => response.json())
                 .then(data => {
-                    alert(data.message);
                     if (data.success) {
+                        alert(data.message);
                         contactForm.reset();
+                    } else {
+                        alert(data.message || 'Bir hata oluştu.');
                     }
                 })
                 .catch(error => {
@@ -105,51 +89,46 @@ document.addEventListener('DOMContentLoaded', () => {
                     submitBtn.textContent = originalText;
                     submitBtn.disabled = false;
                 });
-            }
-        });
-    }
+        }
+    });
+}
 
-    function showError(groupId) {
-        const group = document.getElementById(groupId);
-        if (group) group.classList.add('error');
-    }
+function showError(groupId) {
+    document.getElementById(groupId).classList.add('error');
+}
 
-    function removeError(groupId) {
-        const group = document.getElementById(groupId);
-        if (group) group.classList.remove('error');
-    }
+function hideError(groupId) {
+    document.getElementById(groupId).classList.remove('error');
+}
 
-    /* ==========================================================================
-       Fetch Projects via AJAX (Phase 4)
-       ========================================================================== */
+// Projeleri AJAX ile Çekme
+document.addEventListener('DOMContentLoaded', () => {
     const projectsContainer = document.getElementById('projectsContainer');
-    
+
     if (projectsContainer) {
         fetch('fetch_projects.php')
             .then(response => response.json())
             .then(data => {
-                if (data.success && data.data.length > 0) {
-                    projectsContainer.innerHTML = ''; // Clear loading text
-                    
-                    data.data.forEach(project => {
-                        // Generate Tags HTML
+                projectsContainer.innerHTML = ''; // Yükleniyor yazısını temizle
+
+                if (data.length > 0) {
+                    data.forEach(project => {
+                        // Resim yoksa varsayılan resim koy
+                        const imageUrl = project.image_url ? project.image_url : 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=600&q=80';
+
+                        // Etiketleri (Tags) rozetlere çevir
                         let tagsHtml = '';
                         if (project.tags) {
                             const tagsArray = project.tags.split(',');
-                            tagsArray.forEach(tag => {
-                                tagsHtml += `<span class="tag">${tag.trim()}</span>`;
-                            });
+                            tagsHtml = tagsArray.map(tag => `<span class="tag">${tag.trim()}</span>`).join('');
                         }
-                        
-                        // Default image if empty
-                        const imageUrl = project.image_url || 'https://via.placeholder.com/600x400?text=Project+Image';
-                        
+
                         const projectHtml = `
                             <div class="project-card">
-                                <div class="project-image" style="background-image: url('${imageUrl}')"></div>
-                                <div class="project-info">
-                                    <h3>${project.title}</h3>
-                                    <p>${project.description}</p>
+                                <img src="${imageUrl}" alt="${project.title}" class="project-image">
+                                <div class="project-content">
+                                    <h3 class="project-title">${project.title}</h3>
+                                    <p class="project-desc">${project.description}</p>
                                     <div class="project-tags">
                                         ${tagsHtml}
                                     </div>
@@ -166,5 +145,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching projects:', error);
                 projectsContainer.innerHTML = '<p style="color: #ef4444; text-align: center; width: 100%;">Projeler yüklenirken bir hata oluştu. Veritabanı bağlantınızı kontrol edin.</p>';
             });
+    }
+});
+
+/* ==========================================================================
+   Typewriter (Daktilo) Efekti
+   ========================================================================== */
+const texts = [
+    "Yazılım Mühendisliği Öğrencisi.",
+    "Yazılım Mühendisi.",
+    "Full-Stack Geliştirici.",
+    "Web Tasarımcısı.",
+    "Problem Çözücü."
+];
+let count = 0;
+let index = 0;
+let currentText = "";
+let letter = "";
+let isDeleting = false;
+
+function type() {
+    const typewriterElement = document.getElementById("typewriter");
+    if (!typewriterElement) return;
+
+    if (count === texts.length) {
+        count = 0;
+    }
+    currentText = texts[count];
+
+    if (isDeleting) {
+        letter = currentText.slice(0, --index);
+    } else {
+        letter = currentText.slice(0, ++index);
+    }
+
+    typewriterElement.textContent = letter;
+
+    let typeSpeed = isDeleting ? 50 : 100;
+
+    if (!isDeleting && letter.length === currentText.length) {
+        typeSpeed = 2000; // Kelime bitince 2 saniye bekle
+        isDeleting = true;
+    } else if (isDeleting && letter.length === 0) {
+        isDeleting = false;
+        count++;
+        typeSpeed = 500; // Silinince yeni kelimeye geçmeden bekle
+    }
+
+    setTimeout(type, typeSpeed);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    if (document.getElementById("typewriter")) {
+        setTimeout(type, 1000);
     }
 });
